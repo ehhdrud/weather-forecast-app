@@ -3,8 +3,8 @@ import { StatusBar } from 'expo-status-bar';
 import { StyleSheet } from 'react-native';
 import styled from 'styled-components/native';
 import { theme } from '../theme';
-import { MagnifyingGlassIcon } from 'react-native-heroicons/outline';
-import { MapPinIcon } from 'react-native-heroicons/solid';
+import { MagnifyingGlassIcon, XMarkIcon } from 'react-native-heroicons/outline';
+import { MapPinIcon, CalendarDaysIcon } from 'react-native-heroicons/solid';
 
 export default function HomeScreen() {
     const [showSearch, setShowSearch] = useState(false);
@@ -34,7 +34,11 @@ export default function HomeScreen() {
                             onPress={() => setShowSearch(!showSearch)}
                             style={{ backgroundColor: theme.bgWhite(0.3) }}
                         >
-                            <MagnifyingGlassIcon size="25" color="white" />
+                            {showSearch ? (
+                                <XMarkIcon size="25" color="white" />
+                            ) : (
+                                <MagnifyingGlassIcon size="25" color="white" />
+                            )}
                         </SearchIconTouchableOpacity>
                     </SearchView>
                     {locations.length > 0 && showSearch ? (
@@ -94,6 +98,55 @@ export default function HomeScreen() {
                         </OtherStatView>
                     </OtherStatsView>
                 </ForecastSection>
+
+                {/* forecast for next days */}
+                <NextDaysSection>
+                    <DailyForecastView>
+                        <CalendarDaysIcon size="22" color="white" />
+                        <DailyForecastText>Daily forecast</DailyForecastText>
+                    </DailyForecastView>
+                    <NextDaysScrollView
+                        horizontal
+                        contentContainerStyle={{ paddingHorizontal: 15 }}
+                        showsHorizontalScrollIndicator={false}
+                    >
+                        <NextDaysView style={{ backgroundColor: theme.bgWhite(0.15) }}>
+                            <NextWeatherImage source={require('../assets/images/heavyrain.png')} />
+                            <NextDay>Monday</NextDay>
+                            <NextDegree>13&#176;</NextDegree>
+                        </NextDaysView>
+                        <NextDaysView style={{ backgroundColor: theme.bgWhite(0.15) }}>
+                            <NextWeatherImage source={require('../assets/images/heavyrain.png')} />
+                            <NextDay>Monday</NextDay>
+                            <NextDegree>13&#176;</NextDegree>
+                        </NextDaysView>
+                        <NextDaysView style={{ backgroundColor: theme.bgWhite(0.15) }}>
+                            <NextWeatherImage source={require('../assets/images/heavyrain.png')} />
+                            <NextDay>Monday</NextDay>
+                            <NextDegree>13&#176;</NextDegree>
+                        </NextDaysView>
+                        <NextDaysView style={{ backgroundColor: theme.bgWhite(0.15) }}>
+                            <NextWeatherImage source={require('../assets/images/heavyrain.png')} />
+                            <NextDay>Monday</NextDay>
+                            <NextDegree>13&#176;</NextDegree>
+                        </NextDaysView>
+                        <NextDaysView style={{ backgroundColor: theme.bgWhite(0.15) }}>
+                            <NextWeatherImage source={require('../assets/images/heavyrain.png')} />
+                            <NextDay>Monday</NextDay>
+                            <NextDegree>13&#176;</NextDegree>
+                        </NextDaysView>
+                        <NextDaysView style={{ backgroundColor: theme.bgWhite(0.15) }}>
+                            <NextWeatherImage source={require('../assets/images/heavyrain.png')} />
+                            <NextDay>Monday</NextDay>
+                            <NextDegree>13&#176;</NextDegree>
+                        </NextDaysView>
+                        <NextDaysView style={{ backgroundColor: theme.bgWhite(0.15) }}>
+                            <NextWeatherImage source={require('../assets/images/heavyrain.png')} />
+                            <NextDay>Monday</NextDay>
+                            <NextDegree>13&#176;</NextDegree>
+                        </NextDaysView>
+                    </NextDaysScrollView>
+                </NextDaysSection>
             </SafeAreaViewArea>
         </HomeScreenContainer>
     );
@@ -161,7 +214,7 @@ const SearchPreviewTouchableOpacity = styled.TouchableOpacity`
 
 const SearchPreviewText = styled.Text`
     color: black;
-    font-size: 16px;
+    font-size: 18px;
     margin-left: 8px;
 `;
 
@@ -180,7 +233,7 @@ const City = styled.Text`
 `;
 
 const Country = styled.Text`
-    font-size: 16px;
+    font-size: 18px;
     font-weight: 700;
     color: #d1d5db;
 `;
@@ -242,6 +295,50 @@ const OtherStatText = styled.Text`
     color: white;
     font-size: 16px;
     font-weight: 600;
+`;
+
+const NextDaysSection = styled.View`
+    margin: 12px 0 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+`;
+
+const DailyForecastView = styled.View`
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    margin: 0 28px;
+`;
+
+const DailyForecastText = styled.Text`
+    color: white;
+    font-size: 16px;
+`;
+
+const NextDaysScrollView = styled.ScrollView``;
+
+const NextDaysView = styled.View`
+    justify-content: center;
+    align-items: center;
+    width: 96px;
+    border-radius: 24px;
+    padding: 12px 0;
+    margin: 4px 16px 4px 0px;
+`;
+
+const NextWeatherImage = styled.Image`
+    width: 44px;
+    height: 44px;
+`;
+
+const NextDay = styled.Text`
+    color: white;
+`;
+
+const NextDegree = styled.Text`
+    color: white;
+    font-size: 20px;
 `;
 
 const styles = StyleSheet.create({
