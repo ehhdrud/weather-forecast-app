@@ -1,153 +1,205 @@
-import { useState } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet } from 'react-native';
 import styled from 'styled-components/native';
 import { theme } from '../theme';
+import { weatherImages } from '../constants';
 import { MagnifyingGlassIcon, XMarkIcon } from 'react-native-heroicons/outline';
 import { MapPinIcon, CalendarDaysIcon } from 'react-native-heroicons/solid';
+import { debounce } from 'lodash';
+import { fetchLocations, fetchWeatherForecast } from '../api/weather';
+import { CircleSnail } from 'react-native-progress';
+import { storeData, getData } from '../utils/asyncStorage';
 
 export default function HomeScreen() {
     const [showSearch, setShowSearch] = useState(false);
-    const [locations, setLocations] = useState([1, 2, 3]);
+    const [locations, setLocations] = useState([]);
+    const [weather, setWeather] = useState({});
+    const [loading, setLoading] = useState(true);
 
     const handleLocation = (loc) => {
-        console.log('location: ', loc);
+        // console.log('location: ', loc);
+        setLocations([]);
+        setShowSearch(false);
+        setLoading(true);
+        fetchWeatherForecast({
+            cityName: loc.name,
+            days: '7',
+        }).then((data) => {
+            // console.log('weather info: ', data);
+            setWeather(data);
+            setLoading(false);
+            storeData('city', loc.name);
+        });
+    };
+
+    const handleSearch = (value) => {
+        // console.log('value: ', value);
+        if (value.length > 2) {
+            fetchLocations({ cityName: value }).then((data) => {
+                // console.log('got location: ', data);
+                setLocations(data);
+            });
+        }
+    };
+
+    const handleTextDebounce = useCallback(debounce(handleSearch, 500), []);
+
+    const { current, location } = weather;
+
+    useEffect(() => {
+        fetchMyWeatherData();
+    }, []);
+
+    const fetchMyWeatherData = async () => {
+        let myCity = await getData('city');
+        let cityName = 'Seoul';
+        if (myCity) {
+            cityName = myCity;
+        }
+
+        fetchWeatherForecast({
+            cityName,
+            days: '7',
+        }).then((data) => {
+            setWeather(data);
+            setLoading(false);
+        });
     };
 
     return (
         <HomeScreenContainer>
             <StatusBar style="light" />
             <BackgroundImage blurRadius={70} source={require('../assets/bg.png')} />
-            <SafeAreaViewArea>
-                {/* search section */}
-                <SearchSection>
-                    <SearchView
-                        style={{ backgroundColor: showSearch ? theme.bgWhite(0.2) : 'transparent' }}
-                    >
-                        {showSearch ? (
-                            <SearchBar
-                                placeholder="Search city"
-                                placeholderTextColor={'lightgray'}
-                            />
-                        ) : null}
-                        <SearchIconTouchableOpacity
-                            onPress={() => setShowSearch(!showSearch)}
-                            style={{ backgroundColor: theme.bgWhite(0.3) }}
+
+            {loading ? (
+                <LoadingView>
+                    <CircleSnail thickness={15} size={90} color="#0bb3b2" />
+                </LoadingView>
+            ) : (
+                <SafeAreaViewArea>
+                    {/* search section */}
+                    <SearchSection>
+                        <SearchView
+                            style={{
+                                backgroundColor: showSearch ? theme.bgWhite(0.2) : 'transparent',
+                            }}
                         >
                             {showSearch ? (
-                                <XMarkIcon size="25" color="white" />
-                            ) : (
-                                <MagnifyingGlassIcon size="25" color="white" />
-                            )}
-                        </SearchIconTouchableOpacity>
-                    </SearchView>
-                    {locations.length > 0 && showSearch ? (
-                        <SearchPreviews>
-                            {locations.map((loc, index) => {
-                                let showBorder = index + 1 != locations.length;
+                                <SearchBar
+                                    onChangeText={handleTextDebounce}
+                                    placeholder="Search city"
+                                    placeholderTextColor={'lightgray'}
+                                />
+                            ) : null}
+                            <SearchIconTouchableOpacity
+                                onPress={() => setShowSearch(!showSearch)}
+                                style={{ backgroundColor: theme.bgWhite(0.3) }}
+                            >
+                                {showSearch ? (
+                                    <XMarkIcon size="25" color="white" />
+                                ) : (
+                                    <MagnifyingGlassIcon size="25" color="white" />
+                                )}
+                            </SearchIconTouchableOpacity>
+                        </SearchView>
+                        {locations.length > 0 && showSearch ? (
+                            <SearchPreviews>
+                                {locations.map((loc, index) => {
+                                    let showBorder = index + 1 != locations.length;
+                                    return (
+                                        <SearchPreviewTouchableOpacity
+                                            onPress={() => handleLocation(loc)}
+                                            key={`Preview${index}`}
+                                            style={
+                                                showBorder
+                                                    ? styles.previewItemBorderOn
+                                                    : styles.previewItemBorderOff
+                                            }
+                                        >
+                                            <MapPinIcon size="20" color="gray" />
+                                            <SearchPreviewText>
+                                                {loc?.name}, {loc?.country}
+                                            </SearchPreviewText>
+                                        </SearchPreviewTouchableOpacity>
+                                    );
+                                })}
+                            </SearchPreviews>
+                        ) : null}
+                    </SearchSection>
+
+                    {/* forecast section */}
+                    <ForecastSection>
+                        {/* location area */}
+                        <City>
+                            {location?.name},&nbsp;
+                            <Country>{location?.country}</Country>
+                        </City>
+                        {/* image area */}
+                        <WeatherImageView>
+                            <WeatherImage source={weatherImages[current?.condition?.text]} />
+                        </WeatherImageView>
+                        {/* detail area */}
+                        <DetailView>
+                            <Degree>{current?.temp_c}&#176;</Degree>
+                            <Summary>{current?.condition?.text}</Summary>
+                        </DetailView>
+                        {/* other stats area */}
+                        <OtherStatsView>
+                            <OtherStatView>
+                                <OtherStatImage source={require('../assets/icons/wind.png')} />
+                                <OtherStatText>{current?.wind_kph}km</OtherStatText>
+                            </OtherStatView>
+                            <OtherStatView>
+                                <OtherStatImage source={require('../assets/icons/drop.png')} />
+                                <OtherStatText>{current?.humidity}%</OtherStatText>
+                            </OtherStatView>
+                            <OtherStatView>
+                                <OtherStatImage source={require('../assets/icons/sun.png')} />
+                                <OtherStatText>
+                                    {weather.forecast?.forecastday[0]?.astro?.sunrise}
+                                </OtherStatText>
+                            </OtherStatView>
+                        </OtherStatsView>
+                    </ForecastSection>
+
+                    {/* forecast for next days */}
+                    <NextDaysSection>
+                        <DailyForecastView>
+                            <CalendarDaysIcon size="22" color="white" />
+                            <DailyForecastText>Daily forecast</DailyForecastText>
+                        </DailyForecastView>
+                        <NextDaysScrollView
+                            horizontal
+                            contentContainerStyle={{ paddingHorizontal: 15 }}
+                            showsHorizontalScrollIndicator={false}
+                        >
+                            {weather?.forecast?.forecastday?.map((item, index) => {
+                                let date = new Date(item.date);
+                                let dayName = (dayName = date.toLocaleDateString('en-US', {
+                                    weekday: 'long',
+                                }));
+                                dayName = dayName.split(',')[0];
+
                                 return (
-                                    <SearchPreviewTouchableOpacity
-                                        onPress={() => handleLocation(loc)}
-                                        key={index}
-                                        style={
-                                            showBorder
-                                                ? styles.previewItemBorderOn
-                                                : styles.previewItemBorderOff
-                                        }
+                                    <NextDaysView
+                                        key={`NextDay${index}`}
+                                        style={{ backgroundColor: theme.bgWhite(0.15) }}
                                     >
-                                        <MapPinIcon size="20" color="gray" />
-                                        <SearchPreviewText>
-                                            London, United Kingdom
-                                        </SearchPreviewText>
-                                    </SearchPreviewTouchableOpacity>
+                                        <NextWeatherImage
+                                            source={
+                                                weatherImages[item?.day?.condition?.text || 'other']
+                                            }
+                                        />
+                                        <NextDay>{dayName}</NextDay>
+                                        <NextDegree>{item?.day?.avgtemp_c}&#176;</NextDegree>
+                                    </NextDaysView>
                                 );
                             })}
-                        </SearchPreviews>
-                    ) : null}
-                </SearchSection>
-
-                {/* forecast section */}
-                <ForecastSection>
-                    {/* location area */}
-                    <City>
-                        London,&nbsp;
-                        <Country>United Kingdom</Country>
-                    </City>
-                    {/* image area */}
-                    <WeatherImageView>
-                        <WeatherImage source={require('../assets/images/partlycloudy.png')} />
-                    </WeatherImageView>
-                    {/* detail area */}
-                    <DetailView>
-                        <Degree>23&#176;</Degree>
-                        <Summary>Partly Cloudy</Summary>
-                    </DetailView>
-                    {/* other stats area */}
-                    <OtherStatsView>
-                        <OtherStatView>
-                            <OtherStatImage source={require('../assets/icons/wind.png')} />
-                            <OtherStatText>22km</OtherStatText>
-                        </OtherStatView>
-                        <OtherStatView>
-                            <OtherStatImage source={require('../assets/icons/drop.png')} />
-                            <OtherStatText>23%</OtherStatText>
-                        </OtherStatView>
-                        <OtherStatView>
-                            <OtherStatImage source={require('../assets/icons/sun.png')} />
-                            <OtherStatText>6:05 AM</OtherStatText>
-                        </OtherStatView>
-                    </OtherStatsView>
-                </ForecastSection>
-
-                {/* forecast for next days */}
-                <NextDaysSection>
-                    <DailyForecastView>
-                        <CalendarDaysIcon size="22" color="white" />
-                        <DailyForecastText>Daily forecast</DailyForecastText>
-                    </DailyForecastView>
-                    <NextDaysScrollView
-                        horizontal
-                        contentContainerStyle={{ paddingHorizontal: 15 }}
-                        showsHorizontalScrollIndicator={false}
-                    >
-                        <NextDaysView style={{ backgroundColor: theme.bgWhite(0.15) }}>
-                            <NextWeatherImage source={require('../assets/images/heavyrain.png')} />
-                            <NextDay>Monday</NextDay>
-                            <NextDegree>13&#176;</NextDegree>
-                        </NextDaysView>
-                        <NextDaysView style={{ backgroundColor: theme.bgWhite(0.15) }}>
-                            <NextWeatherImage source={require('../assets/images/heavyrain.png')} />
-                            <NextDay>Monday</NextDay>
-                            <NextDegree>13&#176;</NextDegree>
-                        </NextDaysView>
-                        <NextDaysView style={{ backgroundColor: theme.bgWhite(0.15) }}>
-                            <NextWeatherImage source={require('../assets/images/heavyrain.png')} />
-                            <NextDay>Monday</NextDay>
-                            <NextDegree>13&#176;</NextDegree>
-                        </NextDaysView>
-                        <NextDaysView style={{ backgroundColor: theme.bgWhite(0.15) }}>
-                            <NextWeatherImage source={require('../assets/images/heavyrain.png')} />
-                            <NextDay>Monday</NextDay>
-                            <NextDegree>13&#176;</NextDegree>
-                        </NextDaysView>
-                        <NextDaysView style={{ backgroundColor: theme.bgWhite(0.15) }}>
-                            <NextWeatherImage source={require('../assets/images/heavyrain.png')} />
-                            <NextDay>Monday</NextDay>
-                            <NextDegree>13&#176;</NextDegree>
-                        </NextDaysView>
-                        <NextDaysView style={{ backgroundColor: theme.bgWhite(0.15) }}>
-                            <NextWeatherImage source={require('../assets/images/heavyrain.png')} />
-                            <NextDay>Monday</NextDay>
-                            <NextDegree>13&#176;</NextDegree>
-                        </NextDaysView>
-                        <NextDaysView style={{ backgroundColor: theme.bgWhite(0.15) }}>
-                            <NextWeatherImage source={require('../assets/images/heavyrain.png')} />
-                            <NextDay>Monday</NextDay>
-                            <NextDegree>13&#176;</NextDegree>
-                        </NextDaysView>
-                    </NextDaysScrollView>
-                </NextDaysSection>
-            </SafeAreaViewArea>
+                        </NextDaysScrollView>
+                    </NextDaysSection>
+                </SafeAreaViewArea>
+            )}
         </HomeScreenContainer>
     );
 }
@@ -161,6 +213,12 @@ const BackgroundImage = styled.Image`
     position: absolute;
     width: 100%;
     height: 100%;
+`;
+
+const LoadingView = styled.View`
+    flex: 1;
+    justify-content: center;
+    align-items: center;
 `;
 
 const SafeAreaViewArea = styled.SafeAreaView`
