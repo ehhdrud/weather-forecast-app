@@ -1,4 +1,6 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
+import { useQuery } from '@tanstack/react-query';
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet } from 'react-native';
 import styled from 'styled-components/native';
@@ -14,23 +16,49 @@ import { storeData, getData } from '../utils/asyncStorage';
 export default function HomeScreen() {
     const [showSearch, setShowSearch] = useState(false);
     const [locations, setLocations] = useState([]);
-    const [weather, setWeather] = useState({});
-    const [loading, setLoading] = useState(true);
+
+    const fetchMyWeatherData = async () => {
+        let myCity = await getData('city');
+        let cityName = 'Seoul';
+        if (myCity) {
+            cityName = myCity;
+        }
+
+        const data = await fetchWeatherForecast({
+            cityName,
+            days: '7',
+        });
+
+        return data;
+    };
+
+    const {
+        data: weather,
+        isLoading,
+        isStale,
+        refetch,
+    } = useQuery({
+        queryKey: ['weatherData'], // 쿼리 식별 키 // key에 state를 넣는다면 해당 상태가 변경될 때마다 refetch된다.
+        queryFn: fetchMyWeatherData, // 데이터를 가져오는 함수
+    });
+
+    useFocusEffect(
+        useCallback(() => {
+            console.log('isStale:', isStale);
+            if (isStale === true) {
+                refetch();
+                console.log('refetched!');
+            }
+        }, [isStale])
+    );
 
     const handleLocation = (loc) => {
         // console.log('location: ', loc);
         setLocations([]);
         setShowSearch(false);
-        setLoading(true);
-        fetchWeatherForecast({
-            cityName: loc.name,
-            days: '7',
-        }).then((data) => {
-            // console.log('weather info: ', data);
-            setWeather(data);
-            setLoading(false);
-            storeData('city', loc.name);
-        });
+
+        storeData('city', loc.name);
+        refetch();
     };
 
     const handleSearch = (value) => {
@@ -45,34 +73,14 @@ export default function HomeScreen() {
 
     const handleTextDebounce = useCallback(debounce(handleSearch, 500), []);
 
-    const { current, location } = weather;
-
-    useEffect(() => {
-        fetchMyWeatherData();
-    }, []);
-
-    const fetchMyWeatherData = async () => {
-        let myCity = await getData('city');
-        let cityName = 'Seoul';
-        if (myCity) {
-            cityName = myCity;
-        }
-
-        fetchWeatherForecast({
-            cityName,
-            days: '7',
-        }).then((data) => {
-            setWeather(data);
-            setLoading(false);
-        });
-    };
+    const { current, location } = weather || {};
 
     return (
         <HomeScreenContainer>
             <StatusBar style="light" />
             <BackgroundImage blurRadius={70} source={require('../assets/bg.png')} />
 
-            {loading ? (
+            {isLoading ? (
                 <LoadingView>
                     <CircleSnail thickness={15} size={90} color="#0bb3b2" />
                 </LoadingView>
